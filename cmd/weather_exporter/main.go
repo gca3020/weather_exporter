@@ -8,7 +8,9 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
+	rtcache "github.com/ArthurHlt/go-roundtripper-cache"
 	"github.com/gca3020/weather_exporter/internal/openweather"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -22,6 +24,7 @@ var (
 const (
 	DefaultAddress            = ":6465"
 	DefaultOpenweatherEnabled = true
+	DefaultTTL                = 10 * time.Minute
 
 	Endpoint = "/metrics"
 )
@@ -39,8 +42,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Set up the local client cache with a 10 minute TTL
+	ttl := getDurationWithDefault("WEX_TTL", DefaultTTL)
+	client := &http.Client{
+		Transport: rtcache.NewRoundTripperCache(ttl),
+	}
+
 	// Build the OpenWeather API
-	client := http.DefaultClient
 	api := openweather.NewApi(client, getStringWithDefault("WEX_OW_APIKEY", ""), coords.lat, coords.lon)
 
 	// Register the API with the collector and the collector with prometheus.
@@ -78,6 +86,18 @@ func getStringWithDefault(env string, defaultVal string) string {
 		return defaultVal
 	}
 	return str
+}
+
+func getDurationWithDefault(env string, defaultVal time.Duration) time.Duration {
+	str, ok := os.LookupEnv(env)
+	if !ok {
+		return defaultVal
+	}
+	val, err := time.ParseDuration(str)
+	if err != nil {
+		return defaultVal
+	}
+	return val
 }
 
 /*
