@@ -11,7 +11,7 @@ import (
 	"time"
 
 	rtcache "github.com/ArthurHlt/go-roundtripper-cache"
-	"github.com/gca3020/weather_exporter/internal/openweather"
+	"github.com/gca3020/weather_exporter/internal/exporter"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -49,10 +49,10 @@ func main() {
 	}
 
 	// Build the OpenWeather API
-	api := openweather.NewApi(client, getStringWithDefault("WEX_OW_APIKEY", ""), coords.lat, coords.lon)
+	api := exporter.NewApi(client, getStringWithDefault("WEX_OW_APIKEY", ""), coords.lat, coords.lon)
 
 	// Register the API with the collector and the collector with prometheus.
-	prometheus.MustRegister(openweather.NewCollector(api))
+	prometheus.MustRegister(exporter.NewCollector(api))
 	http.Handle(Endpoint, promhttp.Handler())
 	slog.Info("started serving", "addr", addr, "endpoint", Endpoint)
 

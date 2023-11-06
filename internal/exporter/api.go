@@ -1,4 +1,4 @@
-package openweather
+package exporter
 
 import (
 	"encoding/json"
