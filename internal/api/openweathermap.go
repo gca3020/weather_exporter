@@ -1,4 +1,4 @@
-package exporter
+package api
 
 import (
 	"encoding/json"
@@ -7,17 +7,20 @@ import (
 	"net/http"
 )
 
-const apiBase = "https://api.openweathermap.org/data/2.5"
+const (
+	owmProvider = "OpenWeatherMap"
+	owmApiBase  = "https://api.openweathermap.org/data/2.5"
+)
 
-type Api struct {
+type OpenWeatherMap struct {
 	client   *http.Client
 	key      string
 	lat, lon float64
 	units    string
 }
 
-func NewApi(client *http.Client, key string, lat, lon float64) *Api {
-	return &Api{
+func NewOpenWeatherMap(client *http.Client, key string, lat, lon float64) *OpenWeatherMap {
+	return &OpenWeatherMap{
 		client: client,
 		key:    key,
 		lat:    lat,
@@ -26,7 +29,50 @@ func NewApi(client *http.Client, key string, lat, lon float64) *Api {
 	}
 }
 
-type CurrentConditions struct {
+func (owm *OpenWeatherMap) GetCurrentConditions() (*CurrentConditions, error) {
+	c, err := owm.getCurrentConditions()
+	if err != nil {
+		return nil, err
+	}
+	uv, err := owm.getUvIndex()
+	if err != nil {
+		return nil, err
+	}
+	ap, err := owm.getAirPollution()
+	if err != nil {
+		return nil, err
+	}
+
+	return &CurrentConditions{
+		Provider:      owmProvider,
+		Location:      c.Name,
+		Description:   c.Weather[0].Description,
+		Temp:          c.Main.Temp,
+		FeelsLike:     c.Main.FeelsLike,
+		Humidity:      c.Main.Humidity,
+		PressureGnd:   c.Main.GrndLevel, // OWM appears to omit this in the US
+		PressureSea:   c.Main.Pressure,  // OWM's primary pressure stat is always present, and is sea-level pressure.
+		Visibility:    c.Visibility,
+		WindSpeed:     c.Wind.Speed,
+		WindDirection: c.Wind.Deg,
+		WindGust:      c.Wind.Gust,
+		Clouds:        c.Clouds.All,
+		Rain:          c.Rain.OneHour,
+		Snow:          c.Snow.OneHour,
+		UvIndex:       uv.Value,
+		AqIndex:       ap.List[0].Main.Aqi,
+		CO:            ap.List[0].Components.Co,
+		NO:            ap.List[0].Components.No,
+		NO2:           ap.List[0].Components.No2,
+		O3:            ap.List[0].Components.O3,
+		SO2:           ap.List[0].Components.So2,
+		NH3:           ap.List[0].Components.Nh3,
+		Pm2p5:         ap.List[0].Components.Pm2p5,
+		Pm10:          ap.List[0].Components.Pm10,
+	}, nil
+}
+
+type owCurrentConditions struct {
 	Weather []struct {
 		Main        string `json:"main"`
 		Description string `json:"description"`
@@ -65,10 +111,10 @@ type CurrentConditions struct {
 	Name string `json:"name"`
 }
 
-type AirPollution struct {
+type owAirPollution struct {
 	List []struct {
 		Main struct {
-			Aqi int64 `json:"aqi"`
+			Aqi float64 `json:"aqi"`
 		} `json:"main"`
 		Components struct {
 			Co    float64 `json:"co"`
@@ -83,12 +129,12 @@ type AirPollution struct {
 	} `json:"list"`
 }
 
-type UvIndex struct {
+type owUvIndex struct {
 	Value float64 `json:"value"`
 }
 
-func (a *Api) getCurrentConditions() (*CurrentConditions, error) {
-	url := fmt.Sprintf("%s/weather?lat=%f&lon=%f&appid=%s&units=%s", apiBase, a.lat, a.lon, a.key, a.units)
+func (a *OpenWeatherMap) getCurrentConditions() (*owCurrentConditions, error) {
+	url := fmt.Sprintf("%s/weather?lat=%f&lon=%f&appid=%s&units=%s", owmApiBase, a.lat, a.lon, a.key, a.units)
 	rsp, err := a.client.Get(url)
 	if err != nil {
 		return nil, err
@@ -97,7 +143,7 @@ func (a *Api) getCurrentConditions() (*CurrentConditions, error) {
 	if err != nil {
 		return nil, err
 	}
-	ret := &CurrentConditions{}
+	ret := &owCurrentConditions{}
 	err = json.Unmarshal(rspData, ret)
 	if err != nil {
 		return nil, err
@@ -106,8 +152,8 @@ func (a *Api) getCurrentConditions() (*CurrentConditions, error) {
 	return ret, nil
 }
 
-func (a *Api) getAirPollution() (*AirPollution, error) {
-	url := fmt.Sprintf("%s/air_pollution?lat=%f&lon=%f&appid=%s", apiBase, a.lat, a.lon, a.key)
+func (a *OpenWeatherMap) getAirPollution() (*owAirPollution, error) {
+	url := fmt.Sprintf("%s/air_pollution?lat=%f&lon=%f&appid=%s", owmApiBase, a.lat, a.lon, a.key)
 	rsp, err := a.client.Get(url)
 	if err != nil {
 		return nil, err
@@ -116,7 +162,7 @@ func (a *Api) getAirPollution() (*AirPollution, error) {
 	if err != nil {
 		return nil, err
 	}
-	ret := &AirPollution{}
+	ret := &owAirPollution{}
 	err = json.Unmarshal(rspData, ret)
 	if err != nil {
 		return nil, err
@@ -125,8 +171,8 @@ func (a *Api) getAirPollution() (*AirPollution, error) {
 	return ret, nil
 }
 
-func (a *Api) getUvIndex() (*UvIndex, error) {
-	url := fmt.Sprintf("%s/uvi?lat=%f&lon=%f&appid=%s", apiBase, a.lat, a.lon, a.key)
+func (a *OpenWeatherMap) getUvIndex() (*owUvIndex, error) {
+	url := fmt.Sprintf("%s/uvi?lat=%f&lon=%f&appid=%s", owmApiBase, a.lat, a.lon, a.key)
 	rsp, err := a.client.Get(url)
 	if err != nil {
 		return nil, err
@@ -135,7 +181,7 @@ func (a *Api) getUvIndex() (*UvIndex, error) {
 	if err != nil {
 		return nil, err
 	}
-	ret := &UvIndex{}
+	ret := &owUvIndex{}
 	err = json.Unmarshal(rspData, ret)
 	if err != nil {
 		return nil, err
