@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 )
 
@@ -12,24 +13,41 @@ const (
 	owmApiBase  = "https://api.openweathermap.org/data/2.5"
 )
 
-type OpenWeatherMap struct {
-	client   *http.Client
-	key      string
-	lat, lon float64
-	units    string
+type owmFactory struct {
 }
 
-func NewOpenWeatherMap(client *http.Client, key string, lat, lon float64) *OpenWeatherMap {
-	return &OpenWeatherMap{
+func (f *owmFactory) Build(client *http.Client) (apis []WeatherApi) {
+	coordinates := GetCoordinates("WEX_OW_COORDS")
+	apiKey := GetStringWithDefault("WEX_OW_APIKEY", "")
+
+	for _, coord := range coordinates {
+		slog.Info("Creating new OpenWeather API", "coord", coord)
+		apis = append(apis, newOwmApi(client, apiKey, coord))
+	}
+	return
+}
+
+func init() {
+	factories = append(factories, &owmFactory{})
+}
+
+type owmApi struct {
+	client *http.Client
+	key    string
+	coord  Coordinate
+	units  string
+}
+
+func newOwmApi(client *http.Client, key string, coordinate Coordinate) *owmApi {
+	return &owmApi{
 		client: client,
 		key:    key,
-		lat:    lat,
-		lon:    lon,
+		coord:  coordinate,
 		units:  "metric",
 	}
 }
 
-func (owm *OpenWeatherMap) GetCurrentConditions() (*CurrentConditions, error) {
+func (owm *owmApi) GetCurrentConditions() (*CurrentConditions, error) {
 	c, err := owm.getCurrentConditions()
 	if err != nil {
 		return nil, err
@@ -133,8 +151,8 @@ type owUvIndex struct {
 	Value float64 `json:"value"`
 }
 
-func (a *OpenWeatherMap) getCurrentConditions() (*owCurrentConditions, error) {
-	url := fmt.Sprintf("%s/weather?lat=%f&lon=%f&appid=%s&units=%s", owmApiBase, a.lat, a.lon, a.key, a.units)
+func (a *owmApi) getCurrentConditions() (*owCurrentConditions, error) {
+	url := fmt.Sprintf("%s/weather?lat=%f&lon=%f&appid=%s&units=%s", owmApiBase, a.coord.Lat, a.coord.Lon, a.key, a.units)
 	rsp, err := a.client.Get(url)
 	if err != nil {
 		return nil, err
@@ -152,8 +170,8 @@ func (a *OpenWeatherMap) getCurrentConditions() (*owCurrentConditions, error) {
 	return ret, nil
 }
 
-func (a *OpenWeatherMap) getAirPollution() (*owAirPollution, error) {
-	url := fmt.Sprintf("%s/air_pollution?lat=%f&lon=%f&appid=%s", owmApiBase, a.lat, a.lon, a.key)
+func (a *owmApi) getAirPollution() (*owAirPollution, error) {
+	url := fmt.Sprintf("%s/air_pollution?lat=%f&lon=%f&appid=%s", owmApiBase, a.coord.Lat, a.coord.Lon, a.key)
 	rsp, err := a.client.Get(url)
 	if err != nil {
 		return nil, err
@@ -171,8 +189,8 @@ func (a *OpenWeatherMap) getAirPollution() (*owAirPollution, error) {
 	return ret, nil
 }
 
-func (a *OpenWeatherMap) getUvIndex() (*owUvIndex, error) {
-	url := fmt.Sprintf("%s/uvi?lat=%f&lon=%f&appid=%s", owmApiBase, a.lat, a.lon, a.key)
+func (a *owmApi) getUvIndex() (*owUvIndex, error) {
+	url := fmt.Sprintf("%s/uvi?lat=%f&lon=%f&appid=%s", owmApiBase, a.coord.Lat, a.coord.Lon, a.key)
 	rsp, err := a.client.Get(url)
 	if err != nil {
 		return nil, err

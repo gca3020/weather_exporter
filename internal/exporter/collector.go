@@ -10,7 +10,7 @@ import (
 var Namespace = "weather"
 
 type Collector struct {
-	api api.WeatherApi
+	apis []api.WeatherApi
 
 	description *prometheus.Desc
 	temperature *prometheus.Desc
@@ -37,9 +37,10 @@ type Collector struct {
 	pm10        *prometheus.Desc
 }
 
-func NewCollector(api api.WeatherApi) *Collector {
+func NewCollector(apis []api.WeatherApi) *Collector {
 	return &Collector{
-		api:         api,
+		apis: apis,
+
 		description: prometheus.NewDesc(fqName("description"), "Human-readable description of the current conditions", []string{"provider", "location", "desc"}, nil),
 		temperature: prometheus.NewDesc(fqName("temperature"), "The temperature at ground level, in Celsius", []string{"provider", "location"}, nil),
 		feelsLike:   prometheus.NewDesc(fqName("feelslike"), "The apparent (feels like) temperature at ground level", []string{"provider", "location"}, nil),
@@ -71,32 +72,34 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
-	cc, err := c.api.GetCurrentConditions()
-	slog.Debug("metrics collected", "conditions", cc, "err", err)
+	for _, api := range c.apis {
+		cc, err := api.GetCurrentConditions()
+		slog.Debug("metrics collected", "conditions", cc, "err", err)
 
-	ch <- prometheus.MustNewConstMetric(c.description, prometheus.GaugeValue, 1, cc.Provider, cc.Location, cc.Description)
-	ch <- prometheus.MustNewConstMetric(c.temperature, prometheus.GaugeValue, cc.Temp, cc.Provider, cc.Location)
-	ch <- prometheus.MustNewConstMetric(c.feelsLike, prometheus.GaugeValue, cc.FeelsLike, cc.Provider, cc.Location)
-	ch <- prometheus.MustNewConstMetric(c.humidity, prometheus.GaugeValue, cc.Humidity, cc.Provider, cc.Location)
-	ch <- prometheus.MustNewConstMetric(c.pressureSea, prometheus.GaugeValue, cc.PressureSea, cc.Provider, cc.Location)
-	ch <- prometheus.MustNewConstMetric(c.pressureGnd, prometheus.GaugeValue, cc.PressureGnd, cc.Provider, cc.Location)
-	ch <- prometheus.MustNewConstMetric(c.visibility, prometheus.GaugeValue, cc.Visibility, cc.Provider, cc.Location)
-	ch <- prometheus.MustNewConstMetric(c.windSpeed, prometheus.GaugeValue, cc.WindSpeed, cc.Provider, cc.Location)
-	ch <- prometheus.MustNewConstMetric(c.windDir, prometheus.GaugeValue, cc.WindDirection, cc.Provider, cc.Location)
-	ch <- prometheus.MustNewConstMetric(c.windGust, prometheus.GaugeValue, cc.WindGust, cc.Provider, cc.Location)
-	ch <- prometheus.MustNewConstMetric(c.clouds, prometheus.GaugeValue, cc.Clouds, cc.Provider, cc.Location)
-	ch <- prometheus.MustNewConstMetric(c.rain, prometheus.GaugeValue, cc.Rain, cc.Provider, cc.Location)
-	ch <- prometheus.MustNewConstMetric(c.snow, prometheus.GaugeValue, cc.Snow, cc.Provider, cc.Location)
-	ch <- prometheus.MustNewConstMetric(c.uvi, prometheus.GaugeValue, cc.UvIndex, cc.Provider, cc.Location)
-	ch <- prometheus.MustNewConstMetric(c.aqi, prometheus.GaugeValue, cc.AqIndex, cc.Provider, cc.Location)
-	ch <- prometheus.MustNewConstMetric(c.co, prometheus.GaugeValue, cc.CO, cc.Provider, cc.Location)
-	ch <- prometheus.MustNewConstMetric(c.no, prometheus.GaugeValue, cc.NO, cc.Provider, cc.Location)
-	ch <- prometheus.MustNewConstMetric(c.no2, prometheus.GaugeValue, cc.NO2, cc.Provider, cc.Location)
-	ch <- prometheus.MustNewConstMetric(c.o3, prometheus.GaugeValue, cc.O3, cc.Provider, cc.Location)
-	ch <- prometheus.MustNewConstMetric(c.so2, prometheus.GaugeValue, cc.SO2, cc.Provider, cc.Location)
-	ch <- prometheus.MustNewConstMetric(c.nh3, prometheus.GaugeValue, cc.NH3, cc.Provider, cc.Location)
-	ch <- prometheus.MustNewConstMetric(c.pm2p5, prometheus.GaugeValue, cc.Pm2p5, cc.Provider, cc.Location)
-	ch <- prometheus.MustNewConstMetric(c.pm10, prometheus.GaugeValue, cc.Pm10, cc.Provider, cc.Location)
+		ch <- prometheus.MustNewConstMetric(c.description, prometheus.GaugeValue, 1, cc.Provider, cc.Location, cc.Description)
+		ch <- prometheus.MustNewConstMetric(c.temperature, prometheus.GaugeValue, cc.Temp, cc.Provider, cc.Location)
+		ch <- prometheus.MustNewConstMetric(c.feelsLike, prometheus.GaugeValue, cc.FeelsLike, cc.Provider, cc.Location)
+		ch <- prometheus.MustNewConstMetric(c.humidity, prometheus.GaugeValue, cc.Humidity, cc.Provider, cc.Location)
+		ch <- prometheus.MustNewConstMetric(c.pressureSea, prometheus.GaugeValue, cc.PressureSea, cc.Provider, cc.Location)
+		ch <- prometheus.MustNewConstMetric(c.pressureGnd, prometheus.GaugeValue, cc.PressureGnd, cc.Provider, cc.Location)
+		ch <- prometheus.MustNewConstMetric(c.visibility, prometheus.GaugeValue, cc.Visibility, cc.Provider, cc.Location)
+		ch <- prometheus.MustNewConstMetric(c.windSpeed, prometheus.GaugeValue, cc.WindSpeed, cc.Provider, cc.Location)
+		ch <- prometheus.MustNewConstMetric(c.windDir, prometheus.GaugeValue, cc.WindDirection, cc.Provider, cc.Location)
+		ch <- prometheus.MustNewConstMetric(c.windGust, prometheus.GaugeValue, cc.WindGust, cc.Provider, cc.Location)
+		ch <- prometheus.MustNewConstMetric(c.clouds, prometheus.GaugeValue, cc.Clouds, cc.Provider, cc.Location)
+		ch <- prometheus.MustNewConstMetric(c.rain, prometheus.GaugeValue, cc.Rain, cc.Provider, cc.Location)
+		ch <- prometheus.MustNewConstMetric(c.snow, prometheus.GaugeValue, cc.Snow, cc.Provider, cc.Location)
+		ch <- prometheus.MustNewConstMetric(c.uvi, prometheus.GaugeValue, cc.UvIndex, cc.Provider, cc.Location)
+		ch <- prometheus.MustNewConstMetric(c.aqi, prometheus.GaugeValue, cc.AqIndex, cc.Provider, cc.Location)
+		ch <- prometheus.MustNewConstMetric(c.co, prometheus.GaugeValue, cc.CO, cc.Provider, cc.Location)
+		ch <- prometheus.MustNewConstMetric(c.no, prometheus.GaugeValue, cc.NO, cc.Provider, cc.Location)
+		ch <- prometheus.MustNewConstMetric(c.no2, prometheus.GaugeValue, cc.NO2, cc.Provider, cc.Location)
+		ch <- prometheus.MustNewConstMetric(c.o3, prometheus.GaugeValue, cc.O3, cc.Provider, cc.Location)
+		ch <- prometheus.MustNewConstMetric(c.so2, prometheus.GaugeValue, cc.SO2, cc.Provider, cc.Location)
+		ch <- prometheus.MustNewConstMetric(c.nh3, prometheus.GaugeValue, cc.NH3, cc.Provider, cc.Location)
+		ch <- prometheus.MustNewConstMetric(c.pm2p5, prometheus.GaugeValue, cc.Pm2p5, cc.Provider, cc.Location)
+		ch <- prometheus.MustNewConstMetric(c.pm10, prometheus.GaugeValue, cc.Pm10, cc.Provider, cc.Location)
+	}
 }
 
 func fqName(name string) string {
