@@ -47,23 +47,24 @@ func newOwmApi(client *http.Client, key string, coordinate Coordinate) *owmApi {
 	}
 }
 
-func (owm *owmApi) GetCurrentConditions() (*CurrentConditions, error) {
-	c, err := owm.getCurrentConditions()
+func (a *owmApi) GetCurrentConditions() (*CurrentConditions, error) {
+	c, err := a.getCurrentConditions()
 	if err != nil {
 		return nil, err
 	}
-	uv, err := owm.getUvIndex()
+	uv, err := a.getUvIndex()
 	if err != nil {
 		return nil, err
 	}
-	ap, err := owm.getAirPollution()
+	ap, err := a.getAirPollution()
 	if err != nil {
 		return nil, err
 	}
 
 	return &CurrentConditions{
 		Provider:      owmProvider,
-		Location:      c.Name,
+		LocationName:  c.Name,
+		Coordinates:   fmt.Sprintf("%v,%v", a.coord.Lat, a.coord.Lon),
 		Description:   c.Weather[0].Description,
 		Temp:          c.Main.Temp,
 		FeelsLike:     c.Main.FeelsLike,

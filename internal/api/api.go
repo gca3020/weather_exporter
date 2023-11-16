@@ -5,8 +5,9 @@ type WeatherApi interface {
 }
 
 type CurrentConditions struct {
-	Provider string // Name of the API Provider (e.g. "OpenWeatherMap", "OpenMeteo", "NOAA")
-	Location string // Friendly name of the location to which this conditions apply (e.g. "Denver, US", "Bangkok, Thailand")
+	Provider     string // Name of the API Provider (e.g. "OpenWeatherMap", "OpenMeteo", "NOAA")
+	LocationName string // Friendly name of the location to which this conditions apply (e.g. "Denver, US", "Bangkok, Thailand")
+	Coordinates  string // Coordinates for this sample, as "Lat,Lon" (e.g. 147.25,-25.18)
 
 	Description   string  // Human-readable description of the current conditions
 	Temp          float64 // Temperature at ground level (Celsius)

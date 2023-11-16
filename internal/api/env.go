@@ -20,12 +20,16 @@ func GetCoordinates(coordinateEnv string) []Coordinate {
 	// Grab the full list of coordinates from the environment
 	coordStr := GetStringWithDefault(coordinateEnv, "")
 
+	if coordStr == "" {
+		return nil
+	}
+
 	// First split on semicolons to get the coordinate pairs
-	coordPairs := strings.Split(coordStr, ";")
+	coordPairs := strings.Split(strings.TrimSpace(coordStr), ";")
 	for _, pair := range coordPairs {
 		// Next split on commas to get the lat/long
 		tokens := strings.Split(strings.TrimSpace(pair), ",")
-		if len(tokens) != 2 {
+		if len(tokens) != 2 && len(tokens) != 0 {
 			slog.Error("Coordinate pair does not contain exactly two tokens", "pair", pair)
 			continue
 		}
