@@ -45,8 +45,8 @@ func NewCollector(apis []api.WeatherApi) *Collector {
 		temperature: prometheus.NewDesc(fqName("temperature"), "The temperature at ground level, in Celsius", []string{"provider", "location", "coordinates"}, nil),
 		feelsLike:   prometheus.NewDesc(fqName("feelslike"), "The apparent (feels like) temperature at ground level", []string{"provider", "location", "coordinates"}, nil),
 		humidity:    prometheus.NewDesc(fqName("humidity"), "The current relative humidity percentage", []string{"provider", "location", "coordinates"}, nil),
-		pressureSea: prometheus.NewDesc(fqName("sea_pressure"), "The atmospheric pressure at sea level, in hPa", []string{"provider", "location", "coordinates"}, nil),
-		pressureGnd: prometheus.NewDesc(fqName("ground_pressure"), "The atmospheric pressure at the ground level, in hPa", []string{"provider", "location", "coordinates"}, nil),
+		pressureSea: prometheus.NewDesc(fqName("pressure_msl"), "The mean atmospheric pressure at sea level (MSL), in hPa", []string{"provider", "location", "coordinates"}, nil),
+		pressureGnd: prometheus.NewDesc(fqName("pressure_surface"), "The atmospheric pressure at the ground/surface level, in hPa", []string{"provider", "location", "coordinates"}, nil),
 		visibility:  prometheus.NewDesc(fqName("visibility"), "The visibility, in meters", []string{"provider", "location", "coordinates"}, nil),
 		windSpeed:   prometheus.NewDesc(fqName("wind_speed"), "The wind speed, in meters/second", []string{"provider", "location", "coordinates"}, nil),
 		windDir:     prometheus.NewDesc(fqName("wind_dir"), "The wind direction, in degrees", []string{"provider", "location", "coordinates"}, nil),
@@ -75,6 +75,10 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	for _, api := range c.apis {
 		cc, err := api.GetCurrentConditions()
 		slog.Debug("metrics collected", "conditions", cc, "err", err)
+
+		if err != nil {
+			return
+		}
 
 		ch <- prometheus.MustNewConstMetric(c.description, prometheus.GaugeValue, 1, cc.Provider, cc.LocationName, cc.Coordinates, cc.Description)
 		ch <- prometheus.MustNewConstMetric(c.temperature, prometheus.GaugeValue, cc.Temp, cc.Provider, cc.LocationName, cc.Coordinates)
