@@ -20,9 +20,8 @@ var (
 )
 
 const (
-	DefaultAddress            = ":6465"
-	DefaultOpenweatherEnabled = true
-	DefaultTTL                = 10 * time.Minute
+	DefaultAddress = ":9265"
+	DefaultTTL     = 10 * time.Minute
 
 	Endpoint = "/metrics"
 )
@@ -53,8 +52,4 @@ func main() {
 	err := http.ListenAndServe(addr, nil)
 	slog.Error("ListenAndServe terminated", "err", err)
 	os.Exit(1)
-}
-
-type coordinate struct {
-	lat, lon float64
 }
